@@ -54,7 +54,7 @@ class STTR(nn.Module):
         disable Batchnorm tracking stats to reduce dependency on dataset (this acts as InstanceNorm with affine when batch size is 1)
         """
         for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
+            if isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.InstanceNorm2d):
                 m.track_running_stats = False
 
     def _relu_inplace(self):
@@ -62,7 +62,7 @@ class STTR(nn.Module):
         make all ReLU inplace
         """
         for m in self.modules():
-            if isinstance(m, nn.BatchNorm2d):
+            if isinstance(m, nn.BatchNorm2d) or isinstance(m, nn.InstanceNorm2d):
                 m.inplace = True
 
     def forward(self, x: NestedTensor):

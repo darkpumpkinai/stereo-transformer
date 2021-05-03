@@ -19,6 +19,20 @@ from utilities.train import train_one_epoch
 from module.loss import build_criterion
 
 
+def input2bool(input):
+    """
+    Converts input str to a boolean value if needed
+    """
+    if isinstance(input, bool):
+        return input
+    if input.lower() in ('true', 't', '1'):
+        return True
+    elif input.lower() in ('false', 'f', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def get_args_parser():
     """
     Parse arguments
@@ -53,6 +67,10 @@ def get_args_parser():
     # * STTR
     parser.add_argument('--channel_dim', default=128, type=int,
                         help="Size of the embeddings (dimension of the transformer)")
+
+    # * Layer Normalization Method
+    parser.add_argument('--instance_norm', type=input2bool, nargs='?', const=True, default=False,
+                        help="Use instance normalization in lieu of batch normalization for the STTR network")
 
     # * Positional Encoding
     parser.add_argument('--position_encoding', default='sine1d_rel', type=str, choices=('sine1d_rel', 'none'),
@@ -172,12 +190,22 @@ def main(args):
         checkpoint = torch.load(args.resume)
 
         pretrained_dict = checkpoint['state_dict']
+
+        model_dict = model.state_dict()
+
+        # 1. filter out unnecessary keys
+        pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
+        # 2. overwrite entries in the existing state dict
+        model_dict.update(pretrained_dict)
+        # 3. load the new state dict
         model.load_state_dict(pretrained_dict)
+
         print("Pre-trained model successfully loaded.")
 
         # if not ft/inference/eval, load states for optimizer, lr_scheduler, amp and prev best
         if not (args.ft or args.inference or args.eval):
             args.start_epoch = checkpoint['epoch'] + 1
+
             optimizer.load_state_dict(checkpoint['optimizer'])
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             prev_best = checkpoint['best_pred']
