@@ -2,10 +2,9 @@
 #
 #  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
 
-import math
+# Modified by Alex Showalter-Bucher(darkpumpkin.ai)
+# -Added support for using instance normalization in lieu of batch normalization 05/03/2021
 
-import torch
-import torch.nn.functional as F
 from torch import nn
 from utilities.misc import NestedTensor
 
@@ -22,6 +21,7 @@ def conv1x1(in_planes, out_planes, stride=1):
 
 
 class BasicBlock(nn.Module):
+
     """Custom version of the pytorch resnet block to include instance norm"""
 
     expansion = 1

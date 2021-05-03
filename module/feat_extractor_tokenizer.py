@@ -2,6 +2,9 @@
 #
 #  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
 
+# Modified by Alex Showalter-Bucher(darkpumpkin.ai)
+# -Added support for using instance normalization in lieu of batch normalization 05/03/2021
+
 import torch
 from torch import nn, Tensor
 import torch.nn.functional as F
