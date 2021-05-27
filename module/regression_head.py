@@ -118,8 +118,8 @@ class RegressionHead(nn.Module):
         disp_pred_attn = disp_pred * scale
 
         # upsample
-        disp_pred = F.interpolate(disp_pred_attn[None,], size=(h, w), mode='nearest')  # N x 1 x H x W
-        occ_pred = F.interpolate(occ_pred[None,], size=(h, w), mode='nearest')  # N x 1 x H x W
+        disp_pred = F.interpolate(disp_pred_attn[None,], size=(h, w), mode='nearest').permute(1, 0, 2, 3)  # N x 1 x H x W
+        occ_pred = F.interpolate(occ_pred[None,], size=(h, w), mode='nearest').permute(1, 0, 2, 3)  # N x 1 x H x W
 
         if self.cal is not None:
             # normalize disparity

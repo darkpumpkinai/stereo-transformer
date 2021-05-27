@@ -90,8 +90,8 @@ class Transformer(nn.Module):
         """
 
         # flatten NxCxHxW to WxHNxC
-        bs, c, hn, w = feat_left.shape
-
+        bs, c, h, w = feat_left.shape
+        hn = bs * h
         feat_left = feat_left.permute(1, 3, 2, 0).flatten(2).permute(1, 2, 0)  # CxWxHxN -> CxWxHN -> WxHNxC
         feat_right = feat_right.permute(1, 3, 2, 0).flatten(2).permute(1, 2, 0)
         if pos_enc is not None:
@@ -108,7 +108,7 @@ class Transformer(nn.Module):
 
         # compute attention
         attn_weight = self._alternating_attn(feat, pos_enc, pos_indexes, hn)
-        attn_weight = attn_weight.view(hn, bs, w, w).permute(1, 0, 2, 3)  # NxHxWxW, dim=2 left image, dim=3 right image
+        attn_weight = attn_weight.view(h, bs, w, w).permute(1, 0, 2, 3)  # NxHxWxW, dim=2 left image, dim=3 right image
 
         return attn_weight
 
