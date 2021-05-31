@@ -1,6 +1,9 @@
 #  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
 #
 #  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
+#
+# Modified by Alex Showalter-Bucher(alex@darkpumpkin.ai)
+# -Fixed issues with running batches on a single GPU 05/27/2021
 
 from typing import Optional
 
