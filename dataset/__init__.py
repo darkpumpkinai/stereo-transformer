@@ -1,6 +1,9 @@
 #  Authors: Zhaoshuo Li, Xingtong Liu, Francis X. Creighton, Russell H. Taylor, and Mathias Unberath
 #
 #  Copyright (c) 2020. Johns Hopkins University - All rights reserved.
+#
+# Modified by Alex Showalter-Bucher(alex@darkpumpkin.ai)
+# -Added support for the IRSDataset dataset 05/30/2021
 
 import torch.utils.data as data
 
@@ -9,7 +12,7 @@ from dataset.middlebury import Middlebury2014Dataset
 from dataset.scared import ScaredDataset
 from dataset.scene_flow import SceneFlowSamplePackDataset, SceneFlowFlyingThingsDataset, SceneFlowMonkaaDataset
 from dataset.sintel import SintelDataset
-
+from dataset.irs import IRSDataset
 
 def build_data_loader(args):
     '''
@@ -55,7 +58,6 @@ def build_data_loader(args):
         dataset_train = SintelDataset(dataset_dir, 'train')
         dataset_validation = SintelDataset(dataset_dir, args.validation)
         dataset_test = SintelDataset(dataset_dir, 'test')
-
     elif args.dataset == 'sceneflow_toy':
         dataset_train = SceneFlowSamplePackDataset(dataset_dir, 'train')
         dataset_validation = SceneFlowSamplePackDataset(dataset_dir, 'validation')
@@ -72,6 +74,10 @@ def build_data_loader(args):
         dataset_train = ScaredDataset(dataset_dir, 'train')
         dataset_validation = ScaredDataset(dataset_dir, 'validation')
         dataset_test = ScaredDataset(dataset_dir, 'validation')
+    elif args.dataset == 'irs':
+        dataset_train = IRSDataset(dataset_dir, 'train')
+        dataset_validation = IRSDataset(dataset_dir, 'test')
+        dataset_test = IRSDataset(dataset_dir, 'test')
 
     else:
         raise ValueError(f'Dataset not recognized: {args.dataset}')

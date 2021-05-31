@@ -91,13 +91,17 @@ We recommend the following steps to set up your environment
 - **Other third-party packages**: You can use pip to install the dependencies by 
     ```sh
     pip install -r requirements.txt
-    ``` 
+    ```
+- **(*Required for IRSDataset*) Install OpenEXR dependencies**: Please follow instruction on at this repo (https://github.com/AcademySoftwareFoundation/openexr)
+    - Note: If you run into issues building OpenEXR for Windows 10, you can look into using an unofficial pip wheel to install this dependency (https://github.com/gabrieleilertsen/hdrcnn/issues/1). 
+
 - **(*Optional*) Install Nvidia apex**: We use apex for mixed precision training to accelerate training. To install, please follow instruction [here](https://github.com/NVIDIA/apex)
     - You can **remove** apex dependency if 
         - you have more powerful GPUs, or
         - you don't need to run the training script.
     - Note: If you train without apex, you may run into training error in [Issue #](). This is because augmentation may produce a disparity map that has no valid pixels at all and loss will be `inf`. I implemented an easy fix in [branch bug-attention-no-query](https://github.com/mli0603/stereo-transformer/tree/bug-attention-no-query). But I haven't had time to merge the fix yet. Will come soon.
     - Note: We tried to use the native mixed precision training from official Pytorch implementation. However, it currently does *not* support *gradient checkpointing* for **LayerNorm**. We will post update if this is resolved.
+
 ## Pre-trained Models
 You can download the pretrained model from the following links:
 
@@ -179,6 +183,21 @@ SCARED
         |_ img_right
         |_ occ_left 
 ```
+
+IRS : (see https://github.com/HKBU-HPML/IRS)
+```
+IRS
+    |_ IRSDataset
+        |_ Home
+        |_ Office
+        |_ Restaurant 
+        |_ Store 
+    |_ lists
+        |_ IRSDataset_TEST.list
+        |_ IRSDataset_TRAIN.list
+
+```
+
 
 ## Usage
 #### Colab/Notebook Example
