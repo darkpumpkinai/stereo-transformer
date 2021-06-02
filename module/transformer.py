@@ -4,6 +4,7 @@
 #
 # Modified by Alex Showalter-Bucher(alex@darkpumpkin.ai)
 # -Fixed issues with running batches on a single GPU 05/27/2021
+# -Modified to add partial linear attention to reduce memory requirements 06/02/2021
 
 from typing import Optional
 
@@ -11,10 +12,11 @@ import torch
 from torch import nn, Tensor
 from torch.utils.checkpoint import checkpoint
 
-from module.attention import MultiheadAttentionRelative
+from module.attention import MultiheadAttentionRelative, MultiheadLinearAttentionRelative
 from utilities.misc import get_clones
 
 layer_idx = 0
+
 
 
 class Transformer(nn.Module):
@@ -22,20 +24,24 @@ class Transformer(nn.Module):
     Transformer computes self (intra image) and cross (inter image) attention
     """
 
-    def __init__(self, hidden_dim: int = 128, nhead: int = 8, num_attn_layers: int = 6):
+    def __init__(self, hidden_dim: int = 128, nhead: int = 8, num_attn_layers: int = 6,
+                 use_linear: bool = False, use_checkpoint_logic: bool = True):
         super().__init__()
 
-        self_attn_layer = TransformerSelfAttnLayer(hidden_dim, nhead)
+        self_attn_layer = TransformerSelfAttnLayer(hidden_dim, nhead, use_linear)
         self.self_attn_layers = get_clones(self_attn_layer, num_attn_layers)
 
-        cross_attn_layer = TransformerCrossAttnLayer(hidden_dim, nhead)
+        cross_attn_layer = TransformerCrossAttnLayer(hidden_dim, nhead, use_linear)
         self.cross_attn_layers = get_clones(cross_attn_layer, num_attn_layers)
 
         self.norm = nn.LayerNorm(hidden_dim)
 
         self.hidden_dim = hidden_dim
+
         self.nhead = nhead
         self.num_attn_layers = num_attn_layers
+
+        self.use_checkpoint_logic = use_checkpoint_logic
 
     def _alternating_attn(self, feat: torch.Tensor, pos_enc: torch.Tensor, pos_indexes: Tensor, hn: int):
         """
@@ -53,34 +59,41 @@ class Transformer(nn.Module):
         for idx, (self_attn, cross_attn) in enumerate(zip(self.self_attn_layers, self.cross_attn_layers)):
             layer_idx = idx
 
-            # checkpoint self attn
-            def create_custom_self_attn(module):
-                def custom_self_attn(*inputs):
-                    return module(*inputs)
+            if self.use_checkpoint_logic:
+                # checkpoint self attn
+                def create_custom_self_attn(module):
+                    def custom_self_attn(*inputs):
+                        return module(*inputs)
 
-                return custom_self_attn
+                    return custom_self_attn
 
-            feat = checkpoint(create_custom_self_attn(self_attn), feat, pos_enc, pos_indexes)
+                feat = checkpoint(create_custom_self_attn(self_attn), feat, pos_enc, pos_indexes)
 
-            # add a flag for last layer of cross attention
-            if idx == self.num_attn_layers - 1:
-                # checkpoint cross attn
-                def create_custom_cross_attn(module):
-                    def custom_cross_attn(*inputs):
-                        return module(*inputs, True)
+                # add a flag for last layer of cross attention
+                if idx == self.num_attn_layers - 1:
+                    # checkpoint cross attn
+                    def create_custom_cross_attn(module):
+                        def custom_cross_attn(*inputs):
+                            return module(*inputs, True)
 
-                    return custom_cross_attn
+                        return custom_cross_attn
+                else:
+                    # checkpoint cross attn
+                    def create_custom_cross_attn(module):
+                        def custom_cross_attn(*inputs):
+                            return module(*inputs, False)
+
+                        return custom_cross_attn
+
+                feat, attn_weight = checkpoint(create_custom_cross_attn(cross_attn), feat[:, :hn], feat[:, hn:], pos_enc,
+                                               pos_indexes)
+
             else:
-                # checkpoint cross attn
-                def create_custom_cross_attn(module):
-                    def custom_cross_attn(*inputs):
-                        return module(*inputs, False)
 
-                    return custom_cross_attn
+                feat = self_attn(feat, pos_enc, pos_indexes)
 
-            feat, attn_weight = checkpoint(create_custom_cross_attn(cross_attn), feat[:, :hn], feat[:, hn:], pos_enc,
-                                           pos_indexes)
-
+                feat, attn_weight = cross_attn(feat[:, :hn], feat[:, hn:], pos_enc,
+                                               pos_indexes, idx == self.num_attn_layers - 1)
         layer_idx = 0
         return attn_weight
 
@@ -121,9 +134,9 @@ class TransformerSelfAttnLayer(nn.Module):
     Self attention layer
     """
 
-    def __init__(self, hidden_dim: int, nhead: int):
+    def __init__(self, hidden_dim: int, nhead: int, use_linear: bool = False):
         super().__init__()
-        self.self_attn = MultiheadAttentionRelative(hidden_dim, nhead)
+        self.self_attn = MultiheadLinearAttentionRelative(hidden_dim, nhead) if use_linear else MultiheadAttentionRelative(hidden_dim, nhead)
 
         self.norm1 = nn.LayerNorm(hidden_dim)
 
@@ -155,9 +168,9 @@ class TransformerCrossAttnLayer(nn.Module):
     Cross attention layer
     """
 
-    def __init__(self, hidden_dim: int, nhead: int):
+    def __init__(self, hidden_dim: int, nhead: int, use_linear: bool = False):
         super().__init__()
-        self.cross_attn = MultiheadAttentionRelative(hidden_dim, nhead)
+        self.cross_attn = MultiheadLinearAttentionRelative(hidden_dim, nhead) if use_linear else MultiheadAttentionRelative(hidden_dim, nhead)
 
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.norm2 = nn.LayerNorm(hidden_dim)
@@ -229,5 +242,7 @@ def build_transformer(args):
     return Transformer(
         hidden_dim=args.channel_dim,
         nhead=args.nheads,
-        num_attn_layers=args.num_attn_layers
+        num_attn_layers=args.num_attn_layers,
+        use_linear=args.use_linear_attn,
+        use_checkpoint_logic=not args.disable_checkpoint_proc,
     )

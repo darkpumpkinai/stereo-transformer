@@ -20,6 +20,20 @@ from utilities.foward_pass import set_downsample
 from module.loss import build_criterion
 
 
+def input2bool(input):
+    """
+    Converts input str to a boolean value if needed
+    """
+    if isinstance(input, bool):
+        return input
+    if input.lower() in ('true', 't', '1'):
+        return True
+    elif input.lower() in ('false', 'f', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def get_args_parser():
     """
     Parse arguments
@@ -47,7 +61,7 @@ def get_args_parser():
     parser.add_argument('--num_workers', default=1, type=int)
     parser.add_argument('--checkpoint', type=str, default='dev', help='checkpoint name for current experiment')
     parser.add_argument('--pre_train', action='store_true')
-    parser.add_argument('--downsample', default=3, type=int, help='Ratio to downsample width/height')
+    parser.add_argument('--downsample', default=8, type=int, help='Ratio to downsample width/height')
     parser.add_argument('--apex', action='store_true', help='enable mixed precision training')
 
     # * STTR
@@ -62,6 +76,12 @@ def get_args_parser():
     parser.add_argument('--num_attn_layers', default=6, type=int, help="Number of attention layers in the transformer")
     parser.add_argument('--nheads', default=8, type=int,
                         help="Number of attention heads inside the transformer's attentions")
+
+    # * Transformer
+    parser.add_argument('--use_linear_attn',  type=input2bool, nargs='?', const=True, default=False,
+                        help="Use a pseudo-linear transformer instead of a full")
+    parser.add_argument('--disable_checkpoint_proc', type=input2bool, nargs='?', const=True, default=False,
+                        help="Use the pytorch built in checkpoint processing for transformer")
 
     # * Regression Head
     parser.add_argument('--regression_head', default='ot', type=str, choices=('softmax', 'ot'),
@@ -83,6 +103,9 @@ def get_args_parser():
     parser.add_argument('--loss_weight', type=str, default='rr:1.0, l1_raw:1.0, l1:1.0, occ_be:1.0',
                         help='Weight for losses')
     parser.add_argument('--validation_max_disp', type=int, default=-1)
+
+
+
 
     return parser
 
