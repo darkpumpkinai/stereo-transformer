@@ -14,9 +14,9 @@ from torch.utils.checkpoint import checkpoint
 
 from module.attention import MultiheadAttentionRelative, MultiheadLinearAttentionRelative
 from utilities.misc import get_clones
-
+from .loftr_module import LocalFeatureTransformer
 layer_idx = 0
-
+use_linear_transformer = True
 
 
 class Transformer(nn.Module):
@@ -238,11 +238,21 @@ class TransformerCrossAttnLayer(nn.Module):
         return mask
 
 
+
+
 def build_transformer(args):
-    return Transformer(
-        hidden_dim=args.channel_dim,
-        nhead=args.nheads,
-        num_attn_layers=args.num_attn_layers,
-        use_linear=args.use_linear_attn,
-        use_checkpoint_logic=not args.disable_checkpoint_proc,
-    )
+    # TODO expose to main function and pull out inputs
+    if use_linear_transformer:
+        return LocalFeatureTransformer({'d_model': args.channel_dim,
+                                        'd_ffn': args.channel_dim,
+                                        'nhead': 8,
+                                        'layer_names': ['self', 'cross', 'self', 'cross', 'self', 'cross', 'self', 'cross'],
+                                        'attention': 'linear'})
+    else:
+        return Transformer(
+            hidden_dim=args.channel_dim,
+            nhead=args.nheads,
+            num_attn_layers=args.num_attn_layers,
+            use_linear=args.use_linear_attn,
+            use_checkpoint_logic=not args.disable_checkpoint_proc,
+        )
