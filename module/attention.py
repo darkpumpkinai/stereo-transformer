@@ -203,32 +203,32 @@ class MultiheadLinearAttentionRelative(nn.MultiheadAttention):
 
         # The last layer uses an attn_mask so we need the full attention matrix :-(
         # (TODO figure out a way to remove the need to calculate the full attention matrix)
-        if attn_mask is not None:
-            # # compute attn weight
-            attn_feat = torch.einsum('wnec,vnec->newv', q, k)  # NxExWxW'
+        # if attn_mask is not None:
+        #     # # compute attn weight
+        #     attn_feat = torch.einsum('wnec,vnec->newv', q, k)  # NxExWxW'
+        #
+        #     # add positional terms
+        #     if pos_enc is not None:
+        #         # 0.3 s
+        #         attn_feat_pos = torch.einsum('wnec,wvec->newv', q, k_r)  # NxExWxW'
+        #         attn_pos_feat = torch.einsum('vnec,wvec->newv', k, q_r)  # NxExWxW'
+        #
+        #         # 0.1 s
+        #         attn = attn_feat + attn_feat_pos + attn_pos_feat
+        #     else:
+        #         attn = attn_feat
+        #     assert list(attn.size()) == [bsz, self.num_heads, w, w]
+        #
+        #     # apply attn mask
+        #     attn_mask = attn_mask[None, None, ...]
+        #     attn += attn_mask
+        #
+        #     # raw attn
+        #     raw_attn = attn.sum(dim=1)
+        # else:
+        #     raw_attn = torch.empty(1, 1, dtype=torch.bool)
 
-            # add positional terms
-            if pos_enc is not None:
-                # 0.3 s
-                attn_feat_pos = torch.einsum('wnec,wvec->newv', q, k_r)  # NxExWxW'
-                attn_pos_feat = torch.einsum('vnec,wvec->newv', k, q_r)  # NxExWxW'
-
-                # 0.1 s
-                attn = attn_feat + attn_feat_pos + attn_pos_feat
-            else:
-                attn = attn_feat
-            assert list(attn.size()) == [bsz, self.num_heads, w, w]
-
-            # apply attn mask
-            attn_mask = attn_mask[None, None, ...]
-            attn += attn_mask
-
-            # raw attn
-            raw_attn = attn.sum(dim=1)
-        else:
-            raw_attn = torch.empty(1, 1, dtype=torch.bool)
-
-        return v_o, None, raw_attn
+        return v_o, None, None
 
 
 class MultiheadAttentionRelative(nn.MultiheadAttention):

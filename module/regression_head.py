@@ -295,7 +295,15 @@ class RegressionHead(nn.Module):
         else:
             output['disp_pred'] = disp_pred_low_res
             output['occ_pred'] = occ_pred_low_res
-
+        print("")
+        print("MIN low_res    :  " + str(torch.min(disp_pred_low_res).detach().data))
+        print("MAX low_res    :  " + str(torch.max(disp_pred_low_res).detach().data))
+        print("MIN ott        :  " + str(torch.min(attn_ot).detach().data))
+        print("MAX ott        :  " + str(torch.max(attn_ot).detach().data))
+        print("MIN attn_weight:  " + str(torch.min(attn_weight).detach().data))
+        print("MAX attn_weight:  " + str(torch.max(attn_weight).detach().data))
+        print("MIN pred       :  " + str(torch.min(output['disp_pred']).detach().data))
+        print("MAX pred:      :  " + str(torch.max(output['disp_pred']).detach().data))
         return output
 
 

@@ -80,6 +80,8 @@ def get_args_parser():
     # * Transformer
     parser.add_argument('--use_linear_attn',  type=input2bool, nargs='?', const=True, default=False,
                         help="Use a pseudo-linear transformer instead of a full")
+    parser.add_argument('--linear_attn_version', type=int, default=1,
+                        help='choose which version of linear attn to use')
     parser.add_argument('--disable_checkpoint_proc', type=input2bool, nargs='?', const=True, default=False,
                         help="Use the pytorch built in checkpoint processing for transformer")
 

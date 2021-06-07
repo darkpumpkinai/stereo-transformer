@@ -11,12 +11,13 @@ from typing import Optional
 import torch
 from torch import nn, Tensor
 from torch.utils.checkpoint import checkpoint
+import torch.nn.functional as F
 
 from module.attention import MultiheadAttentionRelative, MultiheadLinearAttentionRelative
 from utilities.misc import get_clones
 from .loftr_module import LocalFeatureTransformer
+import numpy as np
 layer_idx = 0
-use_linear_transformer = True
 
 
 class Transformer(nn.Module):
@@ -125,6 +126,7 @@ class Transformer(nn.Module):
         # compute attention
         attn_weight = self._alternating_attn(feat, pos_enc, pos_indexes, hn)
         attn_weight = attn_weight.view(h, bs, w, w).permute(1, 0, 2, 3)  # NxHxWxW, dim=2 left image, dim=3 right image
+        vis_raw_attn = np.amax(attn_weight.squeeze().detach().cpu().numpy(), axis=2)
 
         return attn_weight
 
@@ -175,6 +177,8 @@ class TransformerCrossAttnLayer(nn.Module):
         self.norm1 = nn.LayerNorm(hidden_dim)
         self.norm2 = nn.LayerNorm(hidden_dim)
 
+        self.temperature = 2
+
     def forward(self, feat_left: Tensor, feat_right: Tensor,
                 pos: Optional[Tensor] = None,
                 pos_indexes: Optional[Tensor] = None,
@@ -220,6 +224,14 @@ class TransformerCrossAttnLayer(nn.Module):
 
         feat_left = feat_left + feat_left_2
 
+        # Set raw_attn to be a similarity matrix as an approximation for the linear attention
+        if attn_mask is not None and raw_attn is None:
+            # normalize
+            attn_mask = attn_mask[None, None, ...]
+
+            feat_c0, feat_c1 = map(lambda feat: feat / feat.shape[-1] ** .5, [feat_left, feat_right])
+            sim_matrix = torch.einsum("wtc,ltc->twl", feat_c0, feat_c1) / self.temperature
+            raw_attn = sim_matrix + attn_mask
         # concat features
         feat = torch.cat([feat_left, feat_right], dim=1)  # Wx2HNxC
 
@@ -238,11 +250,9 @@ class TransformerCrossAttnLayer(nn.Module):
         return mask
 
 
-
-
 def build_transformer(args):
     # TODO expose to main function and pull out inputs
-    if use_linear_transformer:
+    if args.use_linear_attn and args.linear_attn_version == 2:
         return LocalFeatureTransformer({'d_model': args.channel_dim,
                                         'd_ffn': args.channel_dim,
                                         'nhead': 8,
